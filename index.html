@@ -365,34 +365,35 @@ Although you can use them, for a more unique website, replace these images with 
 	<!-- IE10 viewport bug workaround -->
 	<script src="js/ie10-viewport-bug-workaround.js"></script>
    <script> document.addEventListener('DOMContentLoaded', function() {
-    // Function to stop the session recording
     function stopSessionRecording() {
         if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
             try {
                 window.QSI.API.SessionRecording.stop();
                 console.log("Session recording has been stopped successfully.");
+                return true; // Successfully stopped
             } catch (error) {
                 console.error("Failed to stop session recording. Error:", error);
             }
         } else {
             console.warn("QSI API or SessionRecording not available yet.");
         }
+        return false; // Not stopped
     }
 
-    // Check if QSI is already available
-    if (window.QSI) {
-        stopSessionRecording();
-    } else {
-        // If QSI is not available, set up a MutationObserver to watch for it
-        var observer = new MutationObserver(function(mutations) {
-            if (window.QSI) {
-                stopSessionRecording();
-                observer.disconnect(); // Stop observing once QSI is available
+    // Try to stop session recording immediately
+    if (!stopSessionRecording()) {
+        // If not successful, try again every second for up to 10 seconds
+        let attempts = 0;
+        const maxAttempts = 10;
+        const interval = setInterval(function() {
+            attempts++;
+            if (stopSessionRecording() || attempts >= maxAttempts) {
+                clearInterval(interval);
+                if (attempts >= maxAttempts) {
+                    console.error("Failed to stop session recording after " + maxAttempts + " attempts.");
+                }
             }
-        });
-
-        // Start observing the document with the configured parameters
-        observer.observe(document, { childList: true, subtree: true });
+        }, 1000);
     }
 });
 </script>
