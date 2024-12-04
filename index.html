@@ -74,39 +74,6 @@ Although you can use them, for a more unique website, replace these images with 
 	
 	<!--END WEBSITE FEEDBACK SNIPPET-->
 
-    <script> document.addEventListener('DOMContentLoaded', function() {
-    // Function to stop the session recording
-    function stopSessionRecording() {
-        if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
-            try {
-                window.QSI.API.SessionRecording.stop();
-                console.log("Session recording has been stopped successfully.");
-            } catch (error) {
-                console.error("Failed to stop session recording. Error:", error);
-            }
-        } else {
-            console.warn("QSI API or SessionRecording not available yet.");
-        }
-    }
-
-    // Check if QSI is already available
-    if (window.QSI) {
-        stopSessionRecording();
-    } else {
-        // If QSI is not available, set up a MutationObserver to watch for it
-        var observer = new MutationObserver(function(mutations) {
-            if (window.QSI) {
-                stopSessionRecording();
-                observer.disconnect(); // Stop observing once QSI is available
-            }
-        });
-
-        // Start observing the document with the configured parameters
-        observer.observe(document, { childList: true, subtree: true });
-    }
-});
-</script>
-
 </head>
 
 <body>
@@ -397,6 +364,38 @@ Although you can use them, for a more unique website, replace these images with 
 	
 	<!-- IE10 viewport bug workaround -->
 	<script src="js/ie10-viewport-bug-workaround.js"></script>
+   <script> document.addEventListener('DOMContentLoaded', function() {
+    // Function to stop the session recording
+    function stopSessionRecording() {
+        if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+            try {
+                window.QSI.API.SessionRecording.stop();
+                console.log("Session recording has been stopped successfully.");
+            } catch (error) {
+                console.error("Failed to stop session recording. Error:", error);
+            }
+        } else {
+            console.warn("QSI API or SessionRecording not available yet.");
+        }
+    }
+
+    // Check if QSI is already available
+    if (window.QSI) {
+        stopSessionRecording();
+    } else {
+        // If QSI is not available, set up a MutationObserver to watch for it
+        var observer = new MutationObserver(function(mutations) {
+            if (window.QSI) {
+                stopSessionRecording();
+                observer.disconnect(); // Stop observing once QSI is available
+            }
+        });
+
+        // Start observing the document with the configured parameters
+        observer.observe(document, { childList: true, subtree: true });
+    }
+});
+</script>
 	
 </body>
 
