@@ -73,6 +73,16 @@ Although you can use them, for a more unique website, replace these images with 
 	
 	<!--END WEBSITE FEEDBACK SNIPPET-->
 
+    <script> window.qsie = window.qsie || [];
+        window.qsie.push(function() {
+        try {
+        window.QSI.API.SessionRecording.stop();
+        console.log("Session recording has been stopped successfully.");
+        } catch (error) {
+        console.error("Failed to stop session recording. Error:", error);
+        }
+        });</script>
+
 </head>
 
 <body>
