@@ -365,23 +365,37 @@ Although you can use them, for a more unique website, replace these images with 
 	<!-- IE10 viewport bug workaround -->
 	<script src="js/ie10-viewport-bug-workaround.js"></script>
 <script>
-// Function to run the Qualtrics intercept
 async function runQualtricsIntercept() {
-    if (window.QSI && window.QSI.API) {
-        try {
-            await window.QSI.API.load();
-            const intercept = await window.QSI.API.getIntercept("SI_egnZmYoG29LbGbI");
-            if (intercept) {
-                await window.QSI.API.run();
-                console.log("Qualtrics intercept SI_egnZmYoG29LbGbI triggered successfully");
-            } else {
-                console.log("Intercept SI_egnZmYoG29LbGbI not found");
-            }
-        } catch (error) {
-            console.error("Error running Qualtrics intercept SI_egnZmYoG29LbGbI:", error);
-        }
-    } else {
+    if (!(window.QSI && window.QSI.API)) {
         console.warn("Qualtrics API not available");
+        return;
+    }
+
+    try {
+        console.log("Attempting to load Qualtrics API...");
+        await window.QSI.API.load();
+        console.log("Qualtrics API loaded successfully");
+
+        console.log("Attempting to get intercept SI_egnZmYoG29LbGbI...");
+        const intercept = await window.QSI.API.getIntercept("SI_egnZmYoG29LbGbI");
+        
+        if (intercept) {
+            console.log("Intercept found, attempting to run...");
+            const runResult = await window.QSI.API.run();
+            console.log("Run result:", runResult);
+            console.log("Qualtrics intercept SI_egnZmYoG29LbGbI triggered successfully");
+        } else {
+            console.log("Intercept SI_egnZmYoG29LbGbI not found");
+        }
+    } catch (error) {
+        console.error("Error in runQualtricsIntercept:", error);
+        console.error("Error type:", typeof error);
+        console.error("Error stringified:", JSON.stringify(error));
+        if (error && error.stack) {
+            console.error("Stack trace:", error.stack);
+        }
+        // Log the state of the Qualtrics API
+        console.log("QSI API state:", window.QSI.API);
     }
 }
 
@@ -397,13 +411,19 @@ async function checkUrlChange() {
 }
 
 // Set up an interval to check for URL changes
-setInterval(checkUrlChange, 1000);
+const intervalId = setInterval(checkUrlChange, 1000);
 
-// Also run on initial page load
+// Run on initial page load
 document.addEventListener('DOMContentLoaded', runQualtricsIntercept);
 
 // For SPAs that use the History API
 window.addEventListener('popstate', runQualtricsIntercept);
+
+// Safety timeout to stop checking after 5 minutes
+setTimeout(() => {
+    clearInterval(intervalId);
+    console.log("Stopped checking for URL changes after 5 minutes");
+}, 300000);
 </script>
 </body>
 
