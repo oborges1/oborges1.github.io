@@ -415,7 +415,46 @@ Although you can use them, for a more unique website, replace these images with 
     });
 });
 </script>
-	
+<script>
+	async function runQualtricsIntercept() {
+    if (window.QSI && window.QSI.API) {
+        try {
+            await window.QSI.API.load();
+            const intercept = await window.QSI.API.getIntercept("SI_egnZmYoG29LbGbI");
+            if (intercept) {
+                await window.QSI.API.run();
+                console.log("Qualtrics intercept triggered successfully");
+            } else {
+                console.log("Intercept not found");
+            }
+        } catch (error) {
+            console.error("Error running Qualtrics intercept:", error);
+        }
+    } else {
+        console.warn("Qualtrics API not available");
+    }
+}
+
+// Function to check URL changes
+let lastUrl = location.href; 
+async function checkUrlChange() {
+    const currentUrl = location.href;
+    if (currentUrl !== lastUrl) {
+        lastUrl = currentUrl;
+        console.log('URL changed to', currentUrl);
+        await runQualtricsIntercept();
+    }
+}
+
+// Set up an interval to check for URL changes
+setInterval(checkUrlChange, 1000);
+
+// Also run on initial page load
+document.addEventListener('DOMContentLoaded', runQualtricsIntercept);
+
+// For SPAs that use the History API
+window.addEventListener('popstate', runQualtricsIntercept);
+</script>
 </body>
 
 </html>
