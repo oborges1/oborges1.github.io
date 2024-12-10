@@ -378,17 +378,40 @@ document.addEventListener('DOMContentLoaded', function() {
         return doNotRecordUrls.some(path => url.includes(path));
     }
 
-    async function handleRecordingState(shouldPause) {
+    async function ensureSessionRecordingInitialized() {
         if (!(window.QSI && window.QSI.API && window.QSI.API.SessionRecording)) {
             console.warn("QSI API or SessionRecording not available.");
+            return false;
+        }
+
+        try {
+            // Check if SessionRecording is initialized
+            const status = await window.QSI.API.SessionRecording.getStatus();
+            if (status === 'uninitialized') {
+                console.log("SessionRecording not initialized. Attempting to initialize...");
+                await window.QSI.API.SessionRecording.start();
+                console.log("SessionRecording initialized successfully.");
+            }
+            return true;
+        } catch (error) {
+            console.error("Error initializing SessionRecording:", error);
+            return false;
+        }
+    }
+
+    async function handleRecordingState(shouldPause) {
+        if (!(await ensureSessionRecordingInitialized())) {
             return;
         }
 
-        const action = shouldPause ? 'pause' : 'start';
+        const action = shouldPause ? 'pause' : 'resume';
         try {
-            const sessionId = await window.QSI.API.SessionRecording[action]();
-            console.log(`Session recording has been ${action}ed. Session ID: ${sessionId}`);
-            return sessionId;
+            if (action === 'pause') {
+                await window.QSI.API.SessionRecording.pause();
+            } else {
+                await window.QSI.API.SessionRecording.start();
+            }
+            console.log(`Session recording has been ${action}d.`);
         } catch (error) {
             console.error(`Failed to ${action} session recording. Error:`, error);
         }
