@@ -431,7 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } catch (error) {
                 console.error(`Attempt ${i + 1} to ${actionName} failed:`, error);
             }
-            
+             
             if (i < maxAttempts - 1) {
                 console.log(`Waiting ${interval}ms before next attempt...`);
                 await new Promise(resolve => setTimeout(resolve, interval));
