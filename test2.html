@@ -365,11 +365,13 @@ Although you can use them, for a more unique website, replace these images with 
 	<!-- IE10 viewport bug workaround -->
 	<script src="js/ie10-viewport-bug-workaround.js"></script>
 
-    <<script>
-    document.addEventListener('DOMContentLoaded', function() {
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
     // List of URLs where recording should be paused
     const doNotRecordUrls = [
         '/test2.html',
+        '/privacy',
+        '/sensitive-info',
         // Add more URLs as needed
     ];
 
@@ -377,44 +379,97 @@ Although you can use them, for a more unique website, replace these images with 
         return doNotRecordUrls.some(path => url.includes(path));
     }
 
-    function handleRecordingState(shouldPause) {
-        if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
-            const action = shouldPause ? 'pause' : 'start';
-            window.QSI.API.SessionRecording[action]()
-                .then((sessionId) => {
-                    console.log(`Session recording has been ${shouldPause ? 'paused' : 'started'}. Session ID: ${sessionId}`);
-                })
-                .catch((error) => {
-                    console.error(`Failed to ${shouldPause ? 'pause' : 'start'} session recording. Error:`, error);
-                });
+    function pauseSessionRecording() {
+        return new Promise((resolve, reject) => {
+            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+                window.QSI.API.SessionRecording.pause()
+                    .then((sessionId) => {
+                        console.log(`Session recording has been paused successfully. Session ID: ${sessionId}`);
+                        resolve(sessionId);
+                    })
+                    .catch((error) => {
+                        console.error("Failed to pause session recording. Error:", error);
+                        reject(error);
+                    });
+            } else {
+                console.warn("QSI API or SessionRecording not available yet.");
+                resolve(null);
+            }
+        });
+    }
+
+    function resumeSessionRecording() {
+        return new Promise((resolve, reject) => {
+            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+                window.QSI.API.SessionRecording.start()
+                    .then((sessionId) => {
+                        console.log(`Session recording has been resumed successfully. Session ID: ${sessionId}`);
+                        resolve(sessionId);
+                    })
+                    .catch((error) => {
+                        console.error("Failed to resume session recording. Error:", error);
+                        reject(error);
+                    });
+            } else {
+                console.warn("QSI API or SessionRecording not available yet.");
+                resolve(null);
+            }
+        });
+    }
+
+    async function attemptToPauseOrResumeRecording(shouldPause, maxAttempts = 10, interval = 1000) {
+        const action = shouldPause ? pauseSessionRecording : resumeSessionRecording;
+        const actionName = shouldPause ? "pause" : "resume";
+
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                const sessionId = await action();
+                if (sessionId) {
+                    console.log(`Successfully ${actionName}d recording. Session ID: ${sessionId}`);
+                    return sessionId;
+                }
+            } catch (error) {
+                console.error(`Attempt ${i + 1} to ${actionName} failed:`, error);
+            }
+            
+            if (i < maxAttempts - 1) {
+                console.log(`Waiting ${interval}ms before next attempt...`);
+                await new Promise(resolve => setTimeout(resolve, interval));
+            }
         }
+        console.error(`Failed to ${actionName} session recording after ${maxAttempts} attempts.`);
+        return null;
     }
 
     function handleUrlChange() {
         const currentUrl = window.location.href;
-        handleRecordingState(shouldPauseRecording(currentUrl));
+        const shouldPause = shouldPauseRecording(currentUrl);
+        
+        attemptToPauseOrResumeRecording(shouldPause).then(finalSessionId => {
+            if (finalSessionId) {
+                console.log(`Session recording ${shouldPause ? 'paused' : 'resumed'}. Session ID: ${finalSessionId}`);
+                // Here you can do any additional operations with the finalSessionId if needed
+            } else {
+                console.log(`Failed to ${shouldPause ? 'pause' : 'resume'} session recording after all attempts.`);
+            }
+        });
     }
 
-    // Wait for Qualtrics to load before setting up our listeners
-    window.addEventListener('qsi_js_loaded', function() {
-        console.log('Qualtrics API loaded');
-        
-        // Initial check on Qualtrics load
-        handleUrlChange();
+    // Initial check on page load
+    handleUrlChange();
 
-        // Set up an interval to check for URL changes
-        let lastUrl = location.href;
-        setInterval(() => {
-            const currentUrl = location.href;
-            if (currentUrl !== lastUrl) {
-                lastUrl = currentUrl;
-                handleUrlChange();
-            }
-        }, 1000);
+    // Set up an interval to check for URL changes
+    let lastUrl = location.href;
+    setInterval(() => {
+        const currentUrl = location.href;
+        if (currentUrl !== lastUrl) {
+            lastUrl = currentUrl;
+            handleUrlChange();
+        }
+    }, 1000);
 
-        // For SPAs that use the History API
-        window.addEventListener('popstate', handleUrlChange);
-    });
+    // For SPAs that use the History API
+    window.addEventListener('popstate', handleUrlChange);
 });
 </script>
 
