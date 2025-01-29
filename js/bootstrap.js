@@ -463,7 +463,24 @@ if (typeof jQuery === 'undefined') {
     return this
   }
 
+document.addEventListener('DOMContentLoaded', function() {
+    // Find the button with class "navbar-toggle"
+    var navbarToggle = document.querySelector('.navbar-toggle');
 
+    // Check if the button exists
+    if (navbarToggle) {
+        // Add click event listener to the button
+        navbarToggle.addEventListener('click', function() {
+            // Add the id "qtest" to the button
+            this.id = 'qtest';
+            
+            // Optional: Log a message to confirm the id was added
+            console.log('ID "qtest" added to navbar-toggle button');
+        });
+    } else {
+        console.log('Button with class "navbar-toggle" not found');
+    }
+});
   // CAROUSEL PLUGIN DEFINITION
   // ==========================
 
