@@ -385,18 +385,14 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
                 typeof QSI.API.load === 'function' && 
                 typeof QSI.API.run === 'function') {
                 
-                QSI.API
-                    .then(() => {
-                        console.log("QSI.API available");
-                        return QSI.API.load();
-                    })
+                QSI.API.load()
                     .then(() => {
                         console.log("QSI.API.load() executed");
-                        return QSI.API.run();
+                        return QSI.API.run(); 
                     })
                     .then(() => {
                         console.log("QSI.API.run() executed");
-                        resolve();
+		        resolve();
                     })
                     .catch((error) => {
                         console.error("Error in QSI sequence:", error);
