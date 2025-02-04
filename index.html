@@ -380,14 +380,12 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
 
     function executeQSISequence() {
         return new Promise((resolve, reject) => {
-            if (typeof QSI !== 'undefined' && QSI.API && 
-                typeof QSI.API.load === 'function' && 
-                typeof QSI.API.run === 'function') {
+            if (window.QSI && window.QSI.API) {
                 
-                QSI.API.load()
+                window.QSI.API.load()
                     .then(() => {
                         console.log("QSI.API.load() executed");
-                        return QSI.API.run();
+                        return window.QSI.API.run();
                     })
                     .then(() => {
                         console.log("QSI.API.run() executed");
