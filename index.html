@@ -385,9 +385,9 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
                 typeof QSI.API.load === 'function' && 
                 typeof QSI.API.run === 'function') {
                 
-                QSI.API.unload()
+                QSI.API
                     .then(() => {
-                        console.log("QSI.API.unload() executed");
+                        console.log("QSI.API available");
                         return QSI.API.load();
                     })
                     .then(() => {
