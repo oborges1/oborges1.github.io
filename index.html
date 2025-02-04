@@ -374,8 +374,8 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
         if (typeof QSI !== 'undefined' && 
             QSI.EventTracker && 
             QSI.EventTracker.counts && 
-            typeof QSI.EventTracker.counts.testy !== 'undefined') {
-            return QSI.EventTracker.counts.testy;
+            typeof QSI.EventTracker.counts.engaged !== 'undefined') {
+            return QSI.EventTracker.counts.engaged;
         }
         return null;
     }
@@ -410,7 +410,7 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
         
         if (currentTestyCount !== null) {
             if (lastTestyCount !== null && currentTestyCount > lastTestyCount) {
-                console.log(`Testy count increased from ${lastTestyCount} to ${currentTestyCount}`);
+                console.log(`engaged count increased from ${lastTestyCount} to ${currentTestyCount}`);
                 executeQSISequence()
                     .then(() => {
                         console.log("QSI sequence completed successfully");
