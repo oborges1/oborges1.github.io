@@ -367,15 +367,15 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
 	
 	<!-- IE10 viewport bug workaround -->
 	<script src="js/ie10-viewport-bug-workaround.js"></script>
-	<script>function checkQSIEventTracker() {
+	<script>function initializeQSITracking() {
     let lastTestyCount = null;
 
     function getTestyCount() {
         if (typeof QSI !== 'undefined' && 
             QSI.EventTracker && 
             QSI.EventTracker.counts && 
-            typeof QSI.EventTracker.counts.engaged !== 'undefined') {
-            return QSI.EventTracker.counts.engaged;
+            typeof QSI.EventTracker.counts.testy !== 'undefined') {
+            return QSI.EventTracker.counts.testy;
         }
         return null;
     }
@@ -409,12 +409,11 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
         const currentTestyCount = getTestyCount();
         
         if (currentTestyCount !== null) {
-            if (lastTestyCount !== null && currentTestyCount > lastTestyCount) {
-                console.log(`engaged count increased from ${lastTestyCount} to ${currentTestyCount}`);
+            if (lastTestyCount === null || currentTestyCount > lastTestyCount) {
+                console.log(`Testy count ${lastTestyCount === null ? 'initialized' : 'increased'} to ${currentTestyCount}`);
                 executeQSISequence()
                     .then(() => {
                         console.log("QSI sequence completed successfully");
-                        // Note: We're not clearing the interval here, so it will continue to check for future increases
                     })
                     .catch((error) => {
                         console.error("Failed to execute QSI sequence:", error);
@@ -424,7 +423,16 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
         }
     }
 
-    // Check immediately on script load
+    // Execute QSI sequence on page load
+    executeQSISequence()
+        .then(() => {
+            console.log("Initial QSI sequence completed successfully");
+        })
+        .catch((error) => {
+            console.error("Failed to execute initial QSI sequence:", error);
+        });
+
+    // Check immediately after initial execution
     checkAndRun();
 
     // Then check every second
@@ -433,10 +441,11 @@ try{(new g(100,"r","QSI_S_ZN_yU6o0RkcoMQIciB","https://znyu6o0rkcomqicib-qcorpus
 
 // Run the function when the DOM is fully loaded
 if (document.readyState === "complete" || document.readyState === "interactive") {
-    checkQSIEventTracker();
+    initializeQSITracking();
 } else {
-    document.addEventListener("DOMContentLoaded", checkQSIEventTracker);
+    document.addEventListener("DOMContentLoaded", initializeQSITracking);
 }
+
 
 </script>
 	
