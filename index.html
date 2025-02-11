@@ -445,30 +445,23 @@ if (document.readyState === "complete" || document.readyState === "interactive")
     document.addEventListener("DOMContentLoaded", initializeQSITracking);
 }
 
-async function stopSessionRecording(maxAttempts = 10, delay = 1000) {
+async function stopSessionRecording(maxAttempts = 20, delay = 1000) {
     let attempts = 0;
-
     while (attempts < maxAttempts) {
         attempts++;
-
         try {
             if (window.QSI?.API?.SessionRecording?.stop) {
                 const sessionId = await window.QSI.API.SessionRecording.stop();
                 return sessionId;
             }
         } catch (error) {
-            // Silently catch the error and continue to the next attempt
         }
-
         if (attempts < maxAttempts) {
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
-
     throw new Error(`Failed to stop session recording after ${maxAttempts} attempts.`);
 }
-
-// Usage
 stopSessionRecording()
     .then((sessionId) => {
         console.log(`Session recording has been stopped successfully. Session ID: ${sessionId}`);
