@@ -445,8 +445,11 @@ if (document.readyState === "complete" || document.readyState === "interactive")
     document.addEventListener("DOMContentLoaded", initializeQSITracking);
 }
 
-var sessionId = await window.QSI.API.SessionRecording.stop();
-		console,log(sessionId);
+window.QSI.API.SessionRecording.stop()
+    .then(sessionId => {
+        console.log("Session stopped with id: " + sessionId);
+    }).catch(e => {
+        console.log("Failed to stop session);
 
 </script>
 	
