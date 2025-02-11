@@ -445,12 +445,25 @@ if (document.readyState === "complete" || document.readyState === "interactive")
     document.addEventListener("DOMContentLoaded", initializeQSITracking);
 }
 
-window.QSI.API.SessionRecording.stop()
-    .then(sessionId => {
-        console.log("Session stopped with id: " + sessionId);
-    }).catch(e => {
-        console.log("Failed to stop session");
-    });
+ function stopSessionRecording() {
+        return new Promise((resolve, reject) => {
+            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+                window.QSI.API.SessionRecording.stop()
+                    .then((sessionId) => {
+                        console.log(`Session recording has been stopped successfully. Session ID: ${sessionId}`);
+                        resolve(sessionId);
+                    })
+                    .catch((error) => {
+                        console.error("Failed to stop session recording. Error:", error);
+                        reject(error);
+                    });
+            } else {
+                console.warn("QSI API or SessionRecording not available yet.");
+                resolve(null);
+            }
+        });
+    }
+stopSessionRecording();
 
 </script>
 	
