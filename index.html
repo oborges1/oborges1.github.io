@@ -445,7 +445,7 @@ if (document.readyState === "complete" || document.readyState === "interactive")
     document.addEventListener("DOMContentLoaded", initializeQSITracking);
 }
 
-async function stopSessionRecording(maxAttempts = 5, delay = 1000) {
+async function stopSessionRecording(maxAttempts = 10, delay = 1000) {
     let attempts = 0;
 
     while (attempts < maxAttempts) {
