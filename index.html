@@ -445,26 +445,37 @@ if (document.readyState === "complete" || document.readyState === "interactive")
     document.addEventListener("DOMContentLoaded", initializeQSITracking);
 }
 
- function stopSessionRecording() {
-        return new Promise((resolve, reject) => {
-            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
-                window.QSI.API.SessionRecording.stop()
-                    .then((sessionId) => {
-                        console.log(`Session recording has been stopped successfully. Session ID: ${sessionId}`);
-                        resolve(sessionId);
-                    })
-                    .catch((error) => {
-                        console.error("Failed to stop session recording. Error:", error);
-                        reject(error);
-                    });
-            } else {
-                console.warn("QSI API or SessionRecording not available yet.");
-                resolve(null);
-            }
-        });
-    }
-stopSessionRecording();
+async function stopSessionRecording(maxAttempts = 5, delay = 1000) {
+    let attempts = 0;
 
+    while (attempts < maxAttempts) {
+        attempts++;
+
+        try {
+            if (window.QSI?.API?.SessionRecording?.stop) {
+                const sessionId = await window.QSI.API.SessionRecording.stop();
+                return sessionId;
+            }
+        } catch (error) {
+            // Silently catch the error and continue to the next attempt
+        }
+
+        if (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    throw new Error(`Failed to stop session recording after ${maxAttempts} attempts.`);
+}
+
+// Usage
+stopSessionRecording()
+    .then((sessionId) => {
+        console.log(`Session recording has been stopped successfully. Session ID: ${sessionId}`);
+    })
+    .catch((error) => {
+        console.error("Failed to stop session recording:", error);
+    });
 </script>
 	
 <!--<script>
