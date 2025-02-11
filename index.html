@@ -446,6 +446,8 @@ if (document.readyState === "complete" || document.readyState === "interactive")
     document.addEventListener("DOMContentLoaded", initializeQSITracking);
 }
 
+var sessionId = await window.QSI.API.SessionRecording.stop();
+		console,log(sessionId);
 
 </script>
 	
