@@ -505,17 +505,17 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
     // List of URLs where recording should be allowed (whitelist)
     const allowedRecordingUrls = [
-        '/#',
+        '/home',
         '/dashboard',
         '/product',
-        // Add more allowed URLs as needed
+        '/#'  // Adding # for hash-based routes
+        // Add more URLs as needed
     ];
 
     // Track current recording state 
     let currentRecordingState = null; // null = unknown, true = recording, false = paused
     let pendingOperation = false; // Flag to prevent concurrent operations
-    let consecutiveErrors = 0; // Track consecutive errors for better recovery
-
+    
     // Function to check if current URL is in the allowed list
     function isUrlAllowed(url) {
         return allowedRecordingUrls.some(path => url.includes(path));
@@ -526,19 +526,9 @@ document.addEventListener('DOMContentLoaded', function() {
         return !!(window.QSI && window.QSI.API && window.QSI.API.SessionRecording);
     }
 
-    // Reset error counter when operation succeeds
-    function resetErrorCounter() {
-        consecutiveErrors = 0;
-    }
-
-    // Increase wait time exponentially based on consecutive errors
-    function getRetryDelay() {
-        // Start with 500ms, max out at ~8 seconds
-        return Math.min(500 * Math.pow(1.5, consecutiveErrors), 8000);
-    }
-
     // Function to handle recording state based on URL
     function manageRecordingForCurrentUrl() {
+        // Skip if operation is pending or API not available
         if (pendingOperation) {
             console.log("Operation already in progress, skipping...");
             return;
@@ -568,24 +558,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(sessionId => {
                     pendingOperation = false;
                     currentRecordingState = false;
-                    resetErrorCounter();
                     console.log(`Recording paused successfully. ${sessionId ? 'Session ID: ' + sessionId : 'Session ID not available'}`);
                 })
                 .catch(error => {
                     pendingOperation = false;
-                    consecutiveErrors++;
-                    console.error(`Error pausing recording (attempt ${consecutiveErrors}):`, error);
-                    
-                    // Retry with exponential backoff
-                    if (consecutiveErrors < 10) {
-                        const delay = getRetryDelay();
-                        console.log(`Will retry in ${delay}ms...`);
-                        setTimeout(manageRecordingForCurrentUrl, delay);
+                    // Handle specific errors
+                    if (error.message && error.message.includes("not initialized")) {
+                        console.log("Recording already paused or not initialized.");
+                        currentRecordingState = false; // Assume paused if not initialized
                     } else {
-                        console.error("Too many consecutive errors. Giving up.");
-                        // Reset state to force a retry on next URL change
-                        currentRecordingState = null;
-                        consecutiveErrors = 0;
+                        console.error("Error pausing recording:", error);
+                        // Don't reset state to maintain our current understanding
                     }
                 });
         } else {
@@ -594,57 +577,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(sessionId => {
                     pendingOperation = false;
                     currentRecordingState = true;
-                    resetErrorCounter();
                     console.log(`Recording active. ${sessionId ? 'Session ID: ' + sessionId : 'Session ID not available'}`);
                 })
                 .catch(error => {
                     pendingOperation = false;
-                    consecutiveErrors++;
-                    console.error(`Error ensuring recording is active (attempt ${consecutiveErrors}):`, error);
-                    
-                    // Retry with exponential backoff
-                    if (consecutiveErrors < 10) {
-                        const delay = getRetryDelay();
-                        console.log(`Will retry in ${delay}ms...`);
-                        setTimeout(manageRecordingForCurrentUrl, delay);
+                    // Handle specific errors
+                    if (error.message && error.message.includes("already initializing")) {
+                        console.log("Recording already initializing or active.");
+                        currentRecordingState = true; // Assume recording if already initializing
                     } else {
-                        console.error("Too many consecutive errors. Giving up.");
-                        // Reset state to force a retry on next URL change
-                        currentRecordingState = null;
-                        consecutiveErrors = 0;
+                        console.error("Error ensuring recording is active:", error);
+                        // Don't reset state to maintain our current understanding
                     }
                 });
         }
     }
 
-    // Function to verify current recording state directly from API
-    function verifyRecordingState() {
-        // Reset state periodically to force re-verification
-        currentRecordingState = null;
-        manageRecordingForCurrentUrl();
-    }
-
     // Initialize recording control
     function initializeRecordingControl() {
-        // Start in unknown state
-        currentRecordingState = null;
-        
         // Initial check - wait for API to be available
-        if (isApiAvailable()) {
-            manageRecordingForCurrentUrl();
-        } else {
-            const apiCheckInterval = setInterval(() => {
-                if (isApiAvailable()) {
-                    clearInterval(apiCheckInterval);
-                    console.log("QSI API detected. Initializing recording control.");
-                    manageRecordingForCurrentUrl();
-                }
-            }, 500);
-        }
+        const apiCheckInterval = setInterval(() => {
+            if (isApiAvailable()) {
+                clearInterval(apiCheckInterval);
+                console.log("QSI API detected. Initializing recording control.");
+                manageRecordingForCurrentUrl();
+            }
+        }, 500);
 
         // Set up URL change monitoring
         let lastUrl = location.href;
-        setInterval(() => {
+        const urlCheckInterval = setInterval(() => {
             const currentUrl = location.href;
             if (currentUrl !== lastUrl) {
                 lastUrl = currentUrl;
@@ -656,11 +618,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // For SPAs that use History API
         window.addEventListener('popstate', () => {
             console.log("History state changed.");
-            manageRecordingForCurrentUrl();
+            // Small delay to let the URL update first
+            setTimeout(manageRecordingForCurrentUrl, 50);
         });
-        
-        // Periodically verify state to recover from any desynchronization
-        setInterval(verifyRecordingState, 30000);
     }
 
     // Start the recording control
