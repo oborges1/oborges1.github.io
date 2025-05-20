@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>-->
 <script>
-	document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
     // List of URLs where recording should be allowed (whitelist)
     const allowedRecordingUrls = [
         '/#',
@@ -511,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add more allowed URLs as needed
     ];
 
-    function shouldRecordUrl(url) {
+    function isUrlAllowed(url) {
         // If the URL matches any in our allowed list, we should record
         return allowedRecordingUrls.some(path => url.includes(path));
     }
@@ -554,16 +554,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    async function attemptToPauseOrResumeRecording(shouldRecord, maxAttempts = 10, interval = 1000) {
-        // Note the reverse logic here: shouldRecord means we want to resume
-        const action = shouldRecord ? resumeSessionRecording : pauseSessionRecording;
-        const actionName = shouldRecord ? "resume" : "pause";
-
+    async function attemptToManageRecording(action, actionName, maxAttempts = 10, interval = 1000) {
         for (let i = 0; i < maxAttempts; i++) {
             try {
                 const sessionId = await action();
                 if (sessionId) {
-                    console.log(`Successfully ${actionName}d recording. Session ID: ${sessionId}`);
+                    console.log(`Successfully ${actionName} recording. Session ID: ${sessionId}`);
                     return sessionId;
                 }
             } catch (error) {
@@ -581,17 +577,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleUrlChange() {
         const currentUrl = window.location.href;
-        // This is the key change: we start recording only if URL is in our allowed list
-        const shouldRecord = shouldRecordUrl(currentUrl);
+        const urlIsAllowed = isUrlAllowed(currentUrl);
         
-        attemptToPauseOrResumeRecording(shouldRecord).then(finalSessionId => {
-            if (finalSessionId) {
-                console.log(`Session recording ${shouldRecord ? 'resumed' : 'paused'}. Session ID: ${finalSessionId}`);
-                // Here you can do any additional operations with the finalSessionId if needed
-            } else {
-                console.log(`Failed to ${shouldRecord ? 'resume' : 'pause'} session recording after all attempts.`);
-            }
-        });
+        if (!urlIsAllowed) {
+            // If URL is not allowed, try to pause recording
+            attemptToManageRecording(pauseSessionRecording, "pause").then(finalSessionId => {
+                if (finalSessionId) {
+                    console.log(`Session recording paused on non-allowed URL. Session ID: ${finalSessionId}`);
+                } else {
+                    console.log(`Failed to pause session recording after all attempts.`);
+                }
+            });
+        } else {
+            // If URL is allowed, try to resume recording (in case it was paused before)
+            attemptToManageRecording(resumeSessionRecording, "resume").then(finalSessionId => {
+                if (finalSessionId) {
+                    console.log(`Session recording resumed on allowed URL. Session ID: ${finalSessionId}`);
+                } else {
+                    console.log(`Failed to resume session recording after all attempts.`);
+                }
+            });
+        }
     }
 
     // Initial check on page load
