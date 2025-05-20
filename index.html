@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>-->
 <script>
-	document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
     // List of URLs where recording should be allowed (whitelist)
     const allowedRecordingUrls = [
         '/#',
@@ -511,118 +511,170 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add more allowed URLs as needed
     ];
 
-    // Track recording state to avoid redundant operations
+    // Track recording state
     let isCurrentlyRecording = true; // Assume recording starts automatically
+    let isApiInitialized = false;
 
     function isUrlAllowed(url) {
         return allowedRecordingUrls.some(path => url.includes(path));
     }
+    
+    // Check if the QSI API is available
+    function isApiAvailable() {
+        return !!(window.QSI && window.QSI.API && window.QSI.API.SessionRecording);
+    }
+    
+    // Wait for API to become available
+    async function waitForApi(maxWaitTime = 10000, checkInterval = 200) {
+        if (isApiAvailable()) {
+            isApiInitialized = true;
+            return true;
+        }
+        
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+            const checkApi = () => {
+                if (isApiAvailable()) {
+                    isApiInitialized = true;
+                    resolve(true);
+                    return;
+                }
+                
+                if (Date.now() - startTime > maxWaitTime) {
+                    console.warn("QSI API not available after maximum wait time");
+                    resolve(false);
+                    return;
+                }
+                
+                setTimeout(checkApi, checkInterval);
+            };
+            
+            checkApi();
+        });
+    }
 
     function pauseSessionRecording() {
         return new Promise((resolve, reject) => {
-            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
-                window.QSI.API.SessionRecording.pause()
-                    .then((sessionId) => {
-                        isCurrentlyRecording = false;
-                        resolve(sessionId);
-                    })
-                    .catch((error) => {
-                        reject(error);
-                    });
-            } else {
+            if (!isApiAvailable()) {
                 resolve(null);
+                return;
             }
+            
+            window.QSI.API.SessionRecording.pause()
+                .then((sessionId) => {
+                    isCurrentlyRecording = false;
+                    resolve(sessionId);
+                })
+                .catch((error) => {
+                    console.error("Error pausing recording:", error);
+                    reject(error);
+                });
         });
     }
 
     function resumeSessionRecording() {
         return new Promise((resolve, reject) => {
-            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
-                window.QSI.API.SessionRecording.start()
-                    .then((sessionId) => {
-                        isCurrentlyRecording = true;
-                        resolve(sessionId);
-                    })
-                    .catch((error) => {
-                        reject(error);
-                    });
-            } else {
+            if (!isApiAvailable()) {
                 resolve(null);
+                return;
             }
+            
+            window.QSI.API.SessionRecording.start()
+                .then((sessionId) => {
+                    isCurrentlyRecording = true;
+                    resolve(sessionId);
+                })
+                .catch((error) => {
+                    console.error("Error resuming recording:", error);
+                    reject(error);
+                });
         });
     }
 
-    async function attemptToManageRecording(shouldRecord, maxAttempts = 10, interval = 1000) {
+    async function manageRecording(shouldRecord) {
+        // First, ensure API is available
+        if (!isApiInitialized) {
+            const apiReady = await waitForApi();
+            if (!apiReady) {
+                console.error("Cannot manage recording: API not available");
+                return { action: shouldRecord ? "resume" : "pause", success: false };
+            }
+        }
+        
         // If current state already matches desired state, do nothing
         if ((shouldRecord && isCurrentlyRecording) || (!shouldRecord && !isCurrentlyRecording)) {
-            return { sessionId: null, action: "none", success: true };
+            return { action: "none", success: true };
         }
 
-        const action = shouldRecord ? resumeSessionRecording : pauseSessionRecording;
-        const actionName = shouldRecord ? "resume" : "pause";
-
-        for (let i = 0; i < maxAttempts; i++) {
-            try {
-                const sessionId = await action();
-                if (sessionId) {
-                    return { sessionId, action: actionName, success: true };
-                }
-            } catch (error) {
-                console.error(`Attempt ${i + 1} to ${actionName} failed:`, error);
+        try {
+            const action = shouldRecord ? resumeSessionRecording : pauseSessionRecording;
+            const actionName = shouldRecord ? "resume" : "pause";
+            const sessionId = await action();
+            
+            if (sessionId) {
+                return { sessionId, action: actionName, success: true };
+            } else {
+                return { action: actionName, success: false };
             }
-             
-            if (i < maxAttempts - 1 && !window.QSI?.API?.SessionRecording) {
-                // Only wait if the API isn't available yet
-                await new Promise(resolve => setTimeout(resolve, interval));
-            }
+        } catch (error) {
+            console.error(`Failed to manage recording:`, error);
+            return { action: shouldRecord ? "resume" : "pause", success: false };
         }
-        return { sessionId: null, action: actionName, success: false };
     }
 
-    function handleUrlChange() {
+    async function handleUrlChange() {
         const currentUrl = window.location.href;
         const urlIsAllowed = isUrlAllowed(currentUrl);
         
-        attemptToManageRecording(urlIsAllowed).then(result => {
-            if (result.action === "none") {
-                // No action needed, recording state already matches desired state
-                return;
-            }
+        const result = await manageRecording(urlIsAllowed);
+        
+        if (result.action === "none") {
+            // No action needed, recording state already matches desired state
+            return;
+        }
 
-            if (result.success) {
-                console.log(`Session recording ${result.action}d. URL: ${currentUrl}, Session ID: ${result.sessionId}`);
-            } else {
-                console.error(`Failed to ${result.action} session recording after multiple attempts on URL: ${currentUrl}`);
-            }
-        });
+        if (result.success) {
+            console.log(`Session recording ${result.action}d. URL: ${currentUrl}${result.sessionId ? ', Session ID: ' + result.sessionId : ''}`);
+        } else {
+            console.error(`Failed to ${result.action} session recording on URL: ${currentUrl}`);
+            
+            // If we failed, try again after a delay
+            setTimeout(() => {
+                console.log("Retrying recording management...");
+                manageRecording(urlIsAllowed).then(retryResult => {
+                    if (retryResult.success && retryResult.action !== "none") {
+                        console.log(`Retry successful: Session recording ${retryResult.action}d.`);
+                    }
+                });
+            }, 1500);
+        }
     }
 
-    // Check for API availability and set up initial state
-    function initializeRecording() {
+    // Initialize recording management
+    async function initialize() {
+        // Wait for API to be ready before doing anything
+        await waitForApi();
+        
         const currentUrl = window.location.href;
         const urlIsAllowed = isUrlAllowed(currentUrl);
         
         if (!urlIsAllowed) {
-            // If initial URL is not allowed, we need to pause recording
-            attemptToManageRecording(false).then(result => {
-                if (result.action !== "none" && result.success) {
-                    console.log(`Initial page: Recording paused on non-allowed URL. Session ID: ${result.sessionId}`);
-                } else if (result.action !== "none") {
-                    console.error(`Initial page: Failed to pause recording on non-allowed URL.`);
-                }
-            });
+            // If initial URL is not allowed, pause recording
+            const result = await manageRecording(false);
+            if (result.success && result.action !== "none") {
+                console.log(`Initial page: Recording paused on non-allowed URL.`);
+            }
         } else {
             console.log(`Initial page: Recording allowed on this URL.`);
-            // For allowed URLs, we let the default recording happen
         }
     }
 
-    // Initialize on page load
-    initializeRecording();
+    // Start initialization process
+    initialize();
 
     // Set up an interval to check for URL changes
     let lastUrl = location.href;
-    setInterval(() => {
+    const urlCheckInterval = setInterval(() => {
         const currentUrl = location.href;
         if (currentUrl !== lastUrl) {
             lastUrl = currentUrl;
