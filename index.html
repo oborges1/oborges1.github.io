@@ -366,7 +366,7 @@ try{(new g(100,"r","QSI_S_ZN_4ZP87NBHE8RRJf7","https://zn4zp87nbhe8rrjf7-hcf.sit
 	
 	<!-- IE10 viewport bug workaround -->
 	<script src="js/ie10-viewport-bug-workaround.js"></script>
-	<script>
+	<!--<script>
 
 async function stopSessionRecording(maxAttempts = 20, delay = 1000) {
     let attempts = 0;
@@ -394,7 +394,7 @@ stopSessionRecording()
     });
 </script>
 	
-<!--<script>
+<script>
 document.addEventListener('DOMContentLoaded', function() {
     // List of URLs where recording should be paused
     const doNotRecordUrls = [
@@ -501,6 +501,116 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('popstate', handleUrlChange);
 });
 </script>-->
+<script>
+	document.addEventListener('DOMContentLoaded', function() {
+    // List of URLs where recording should be allowed (whitelist)
+    const allowedRecordingUrls = [
+        '/home',
+        '/dashboard',
+        '/product',
+        // Add more allowed URLs as needed
+    ];
+
+    function shouldRecordUrl(url) {
+        // If the URL matches any in our allowed list, we should record
+        return allowedRecordingUrls.some(path => url.includes(path));
+    }
+
+    function pauseSessionRecording() {
+        return new Promise((resolve, reject) => {
+            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+                window.QSI.API.SessionRecording.pause()
+                    .then((sessionId) => {
+                        console.log(`Session recording has been paused successfully. Session ID: ${sessionId}`);
+                        resolve(sessionId);
+                    })
+                    .catch((error) => {
+                        console.error("Failed to pause session recording. Error:", error);
+                        reject(error);
+                    });
+            } else {
+                console.warn("QSI API or SessionRecording not available yet.");
+                resolve(null);
+            }
+        });
+    }
+
+    function resumeSessionRecording() {
+        return new Promise((resolve, reject) => {
+            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+                window.QSI.API.SessionRecording.start()
+                    .then((sessionId) => {
+                        console.log(`Session recording has been resumed successfully. Session ID: ${sessionId}`);
+                        resolve(sessionId);
+                    })
+                    .catch((error) => {
+                        console.error("Failed to resume session recording. Error:", error);
+                        reject(error);
+                    });
+            } else {
+                console.warn("QSI API or SessionRecording not available yet.");
+                resolve(null);
+            }
+        });
+    }
+
+    async function attemptToPauseOrResumeRecording(shouldRecord, maxAttempts = 10, interval = 1000) {
+        // Note the reverse logic here: shouldRecord means we want to resume
+        const action = shouldRecord ? resumeSessionRecording : pauseSessionRecording;
+        const actionName = shouldRecord ? "resume" : "pause";
+
+        for (let i = 0; i < maxAttempts; i++) {
+            try {
+                const sessionId = await action();
+                if (sessionId) {
+                    console.log(`Successfully ${actionName}d recording. Session ID: ${sessionId}`);
+                    return sessionId;
+                }
+            } catch (error) {
+                console.error(`Attempt ${i + 1} to ${actionName} failed:`, error);
+            }
+             
+            if (i < maxAttempts - 1) {
+                console.log(`Waiting ${interval}ms before next attempt...`);
+                await new Promise(resolve => setTimeout(resolve, interval));
+            }
+        }
+        console.error(`Failed to ${actionName} session recording after ${maxAttempts} attempts.`);
+        return null;
+    }
+
+    function handleUrlChange() {
+        const currentUrl = window.location.href;
+        // This is the key change: we start recording only if URL is in our allowed list
+        const shouldRecord = shouldRecordUrl(currentUrl);
+        
+        attemptToPauseOrResumeRecording(shouldRecord).then(finalSessionId => {
+            if (finalSessionId) {
+                console.log(`Session recording ${shouldRecord ? 'resumed' : 'paused'}. Session ID: ${finalSessionId}`);
+                // Here you can do any additional operations with the finalSessionId if needed
+            } else {
+                console.log(`Failed to ${shouldRecord ? 'resume' : 'pause'} session recording after all attempts.`);
+            }
+        });
+    }
+
+    // Initial check on page load
+    handleUrlChange();
+
+    // Set up an interval to check for URL changes
+    let lastUrl = location.href;
+    setInterval(() => {
+        const currentUrl = location.href;
+        if (currentUrl !== lastUrl) {
+            lastUrl = currentUrl;
+            handleUrlChange();
+        }
+    }, 1000);
+
+    // For SPAs that use the History API
+    window.addEventListener('popstate', handleUrlChange);
+});
+	</script>
 </body>
 
 </html>
