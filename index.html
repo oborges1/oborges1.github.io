@@ -508,123 +508,113 @@ document.addEventListener('DOMContentLoaded', function() {
         '/home',
         '/dashboard',
         '/product',
-        '/#'  // Adding # for hash-based routes
+        '/#'  // Add hash routes if needed
         // Add more URLs as needed
     ];
-
-    // Track current recording state 
-    let currentRecordingState = null; // null = unknown, true = recording, false = paused
-    let pendingOperation = false; // Flag to prevent concurrent operations
     
-    // Function to check if current URL is in the allowed list
-    function isUrlAllowed(url) {
-        return allowedRecordingUrls.some(path => url.includes(path));
+    // Global state flag to prevent multiple operations
+    let isOperationInProgress = false;
+    
+    // Function to check if current URL should be recorded
+    function shouldRecordCurrentUrl() {
+        const currentUrl = window.location.href;
+        return allowedRecordingUrls.some(path => currentUrl.includes(path));
     }
-
-    // Function to check for API availability
-    function isApiAvailable() {
-        return !!(window.QSI && window.QSI.API && window.QSI.API.SessionRecording);
+    
+    // Wait for QSI API to be available
+    function waitForQsiApi() {
+        return new Promise(resolve => {
+            // If already available, resolve immediately
+            if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+                return resolve();
+            }
+            
+            // Otherwise set up a polling mechanism
+            const checkInterval = setInterval(() => {
+                if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 200);
+        });
     }
-
-    // Function to handle recording state based on URL
-    function manageRecordingForCurrentUrl() {
-        // Skip if operation is pending or API not available
-        if (pendingOperation) {
+    
+    // Simple function to handle recording state
+    async function updateRecordingState() {
+        // Prevent concurrent operations
+        if (isOperationInProgress) {
             console.log("Operation already in progress, skipping...");
             return;
         }
-
-        if (!isApiAvailable()) {
-            console.log("QSI API not available yet, will retry...");
-            setTimeout(manageRecordingForCurrentUrl, 500);
-            return;
-        }
         
-        const currentUrl = window.location.href;
-        const urlIsAllowed = isUrlAllowed(currentUrl);
-        const desiredState = urlIsAllowed; // true = recording, false = paused
+        isOperationInProgress = true;
         
-        // Only make API calls if we need to change the state or if state is unknown
-        if (currentRecordingState === desiredState && currentRecordingState !== null) {
-            console.log(`Recording already in desired state (${desiredState ? "recording" : "paused"}) for URL: ${currentUrl}`);
-            return;
-        }
-        
-        pendingOperation = true;
-        
-        if (!urlIsAllowed) {
-            console.log(`URL not in allowed list: ${currentUrl}. Pausing recording...`);
-            window.QSI.API.SessionRecording.pause()
-                .then(sessionId => {
-                    pendingOperation = false;
-                    currentRecordingState = false;
-                    console.log(`Recording paused successfully. ${sessionId ? 'Session ID: ' + sessionId : 'Session ID not available'}`);
-                })
-                .catch(error => {
-                    pendingOperation = false;
-                    // Handle specific errors
-                    if (error.message && error.message.includes("not initialized")) {
-                        console.log("Recording already paused or not initialized.");
-                        currentRecordingState = false; // Assume paused if not initialized
-                    } else {
-                        console.error("Error pausing recording:", error);
-                        // Don't reset state to maintain our current understanding
-                    }
-                });
-        } else {
-            console.log(`URL is in allowed list: ${currentUrl}. Ensuring recording is active...`);
-            window.QSI.API.SessionRecording.start()
-                .then(sessionId => {
-                    pendingOperation = false;
-                    currentRecordingState = true;
-                    console.log(`Recording active. ${sessionId ? 'Session ID: ' + sessionId : 'Session ID not available'}`);
-                })
-                .catch(error => {
-                    pendingOperation = false;
-                    // Handle specific errors
-                    if (error.message && error.message.includes("already initializing")) {
+        try {
+            // Wait for API to be available
+            await waitForQsiApi();
+            
+            const shouldRecord = shouldRecordCurrentUrl();
+            
+            if (shouldRecord) {
+                // Try to start recording for allowed URLs
+                try {
+                    const sessionId = await window.QSI.API.SessionRecording.start();
+                    console.log(`Recording active on allowed URL. ${sessionId ? 'Session ID: ' + sessionId : ''}`);
+                } catch (e) {
+                    // If it's already initializing, that's fine
+                    if (e.message && e.message.includes("already initializing")) {
                         console.log("Recording already initializing or active.");
-                        currentRecordingState = true; // Assume recording if already initializing
                     } else {
-                        console.error("Error ensuring recording is active:", error);
-                        // Don't reset state to maintain our current understanding
+                        console.error("Error starting recording:", e);
                     }
-                });
+                }
+            } else {
+                // Try to pause recording for non-allowed URLs
+                try {
+                    const sessionId = await window.QSI.API.SessionRecording.pause();
+                    console.log(`Recording paused on non-allowed URL. ${sessionId ? 'Session ID: ' + sessionId : ''}`);
+                } catch (e) {
+                    // If it's not initialized, that's expected on pages where recording should be paused
+                    if (e.message && e.message.includes("not initialized")) {
+                        console.log("Recording already paused or not initialized.");
+                    } else {
+                        console.error("Error pausing recording:", e);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("General error in recording management:", error);
+        } finally {
+            isOperationInProgress = false;
         }
     }
-
-    // Initialize recording control
-    function initializeRecordingControl() {
-        // Initial check - wait for API to be available
-        const apiCheckInterval = setInterval(() => {
-            if (isApiAvailable()) {
-                clearInterval(apiCheckInterval);
-                console.log("QSI API detected. Initializing recording control.");
-                manageRecordingForCurrentUrl();
-            }
-        }, 500);
-
-        // Set up URL change monitoring
+    
+    // Function to set up URL change monitoring
+    function setupUrlChangeMonitoring() {
+        // Initial check
+        updateRecordingState();
+        
+        // Monitor URL changes
         let lastUrl = location.href;
-        const urlCheckInterval = setInterval(() => {
+        setInterval(() => {
             const currentUrl = location.href;
             if (currentUrl !== lastUrl) {
                 lastUrl = currentUrl;
-                console.log("URL change detected.");
-                manageRecordingForCurrentUrl();
+                console.log("URL change detected");
+                updateRecordingState();
             }
         }, 1000);
-
-        // For SPAs that use History API
+        
+        // For SPAs using History API
         window.addEventListener('popstate', () => {
-            console.log("History state changed.");
-            // Small delay to let the URL update first
-            setTimeout(manageRecordingForCurrentUrl, 50);
+            console.log("History state changed");
+            // Small delay to ensure URL is updated
+            setTimeout(updateRecordingState, 50);
         });
     }
-
-    // Start the recording control
-    initializeRecordingControl();
+    
+    // Start monitoring
+    setupUrlChangeMonitoring();
 });
 </script>
 </body>
