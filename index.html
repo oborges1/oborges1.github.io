@@ -511,6 +511,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add more allowed URLs as needed
     ];
 
+    // Track current recording state to avoid repeated API calls
+    let currentRecordingState = null; // null = unknown, true = recording, false = paused
+
     // Function to check if current URL is in the allowed list
     function isUrlAllowed(url) {
         return allowedRecordingUrls.some(path => url.includes(path));
@@ -531,46 +534,62 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const currentUrl = window.location.href;
         const urlIsAllowed = isUrlAllowed(currentUrl);
+        const desiredState = urlIsAllowed; // true = recording, false = paused
         
-        // We only need to pause recording for non-allowed URLs
-        // For allowed URLs, we let the default recording behavior continue
+        // Only make API calls if we need to change the state
+        if (currentRecordingState === desiredState) {
+            console.log(`Recording already in desired state (${desiredState ? "recording" : "paused"}) for URL: ${currentUrl}`);
+            return;
+        }
+        
         if (!urlIsAllowed) {
             console.log(`URL not in allowed list: ${currentUrl}. Pausing recording...`);
             window.QSI.API.SessionRecording.pause()
                 .then(sessionId => {
-                    console.log(`Recording paused successfully. Session ID: ${sessionId}`);
+                    currentRecordingState = false;
+                    console.log(`Recording paused successfully. ${sessionId ? 'Session ID: ' + sessionId : 'Session ID not available'}`);
                 })
                 .catch(error => {
                     console.error("Error pausing recording:", error);
-                    // Retry on failure
-                    setTimeout(manageRecordingForCurrentUrl, 1000);
+                    // Only retry if we still need to pause
+                    if (currentRecordingState !== false) {
+                        setTimeout(manageRecordingForCurrentUrl, 1000);
+                    }
                 });
         } else {
-            // For allowed URLs, check if we need to resume 
-            // (in case it was paused before)
             console.log(`URL is in allowed list: ${currentUrl}. Ensuring recording is active...`);
             window.QSI.API.SessionRecording.start()
                 .then(sessionId => {
-                    console.log(`Recording active. Session ID: ${sessionId}`);
+                    currentRecordingState = true;
+                    console.log(`Recording active. ${sessionId ? 'Session ID: ' + sessionId : 'Session ID not available'}`);
                 })
                 .catch(error => {
                     console.error("Error ensuring recording is active:", error);
-                    // Retry on failure
-                    setTimeout(manageRecordingForCurrentUrl, 1000);
+                    // Only retry if we still need to record
+                    if (currentRecordingState !== true) {
+                        setTimeout(manageRecordingForCurrentUrl, 1000);
+                    }
                 });
         }
     }
 
     // Initialize recording control
     function initializeRecordingControl() {
+        // Assume recording is active at start (QSI default behavior)
+        currentRecordingState = true;
+        
         // Initial check - wait for API to be available
-        const apiCheckInterval = setInterval(() => {
-            if (isApiAvailable()) {
-                clearInterval(apiCheckInterval);
-                console.log("QSI API detected. Initializing recording control.");
-                manageRecordingForCurrentUrl();
-            }
-        }, 500);
+        if (isApiAvailable()) {
+            manageRecordingForCurrentUrl();
+        } else {
+            const apiCheckInterval = setInterval(() => {
+                if (isApiAvailable()) {
+                    clearInterval(apiCheckInterval);
+                    console.log("QSI API detected. Initializing recording control.");
+                    manageRecordingForCurrentUrl();
+                }
+            }, 500);
+        }
 
         // Set up URL change monitoring
         let lastUrl = location.href;
