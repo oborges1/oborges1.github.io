@@ -512,111 +512,104 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add more URLs as needed
     ];
     
-    // Global state flag to prevent multiple operations
-    let isOperationInProgress = false;
-    let initializationAttempts = 0;
-    const MAX_INIT_ATTEMPTS = 5;
-    
     // Function to check if current URL should be recorded
     function shouldRecordCurrentUrl() {
         const currentUrl = window.location.href;
         return allowedRecordingUrls.some(path => currentUrl.includes(path));
     }
     
-    // Wait for QSI API to be available
-    function waitForQsiApi(timeout = 10000) {
-        return new Promise((resolve, reject) => {
-            // If already available, resolve immediately
+    // Function to handle initial page load - more aggressive checking for API
+    function handleInitialPageLoad() {
+        const checkForApiAndUpdate = () => {
             if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
-                return resolve(true);
-            }
-            
-            const startTime = Date.now();
-            
-            // Otherwise set up a polling mechanism
-            const checkInterval = setInterval(() => {
-                if (window.QSI && window.QSI.API && window.QSI.API.SessionRecording) {
-                    clearInterval(checkInterval);
-                    resolve(true);
-                    return;
-                }
+                console.log("QSI API found on initial page load");
+                const shouldRecord = shouldRecordCurrentUrl();
                 
-                // Check for timeout
-                if (Date.now() - startTime > timeout) {
-                    clearInterval(checkInterval);
-                    reject(new Error("QSI API not available after timeout"));
+                if (!shouldRecord) {
+                    // On initial load for non-allowed URL, we must pause
+                    window.QSI.API.SessionRecording.pause()
+                        .then(sessionId => {
+                            console.log(`Initial page: Recording paused on non-allowed URL. ${sessionId ? 'Session ID: ' + sessionId : ''}`);
+                        })
+                        .catch(error => {
+                            // Only log real errors, not the "not initialized" which is expected sometimes
+                            if (!error.message || !error.message.includes("not initialized")) {
+                                console.error("Error pausing recording on initial page:", error);
+                            }
+                        });
+                } else {
+                    console.log("Initial page: URL is allowed for recording, letting default recording proceed");
                 }
-            }, 200);
-        });
+                return true;
+            }
+            return false;
+        };
+        
+        // Try immediately
+        if (checkForApiAndUpdate()) return;
+        
+        // If not available yet, try more aggressively
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        const apiCheckInterval = setInterval(() => {
+            attempts++;
+            if (checkForApiAndUpdate() || attempts >= maxAttempts) {
+                clearInterval(apiCheckInterval);
+                if (attempts >= maxAttempts) {
+                    console.warn(`QSI API not found after ${maxAttempts} attempts`);
+                }
+            }
+        }, 200);
     }
     
-    // Simple function to handle recording state
-    async function updateRecordingState() {
-        // Prevent concurrent operations
-        if (isOperationInProgress) {
+    // Function to handle URL changes after initial load
+    function handleUrlChange() {
+        if (!window.QSI || !window.QSI.API || !window.QSI.API.SessionRecording) {
+            console.log("QSI API not available during URL change");
             return;
         }
         
-        isOperationInProgress = true;
+        const currentUrl = window.location.href;
+        const shouldRecord = shouldRecordCurrentUrl();
         
-        try {
-            // Wait for API to be available with timeout
-            await waitForQsiApi();
+        if (shouldRecord) {
+            console.log(`URL change: ${currentUrl} is allowed for recording, starting/continuing recording`);
             
-            const shouldRecord = shouldRecordCurrentUrl();
-            const currentUrl = window.location.href;
-            
-            if (shouldRecord) {
-                // Try to start recording for allowed URLs
-                try {
-                    const sessionId = await window.QSI.API.SessionRecording.start();
-                    console.log(`Recording active on allowed URL: ${currentUrl}. ${sessionId ? 'Session ID: ' + sessionId : ''}`);
-                } catch (e) {
-                    // If it's already initializing, that's expected behavior
-                    if (e.message && e.message.includes("already initializing")) {
-                        console.log(`Recording already active/initializing on URL: ${currentUrl}`);
+            window.QSI.API.SessionRecording.start()
+                .then(sessionId => {
+                    console.log(`Recording active on allowed URL. ${sessionId ? 'Session ID: ' + sessionId : ''}`);
+                })
+                .catch(error => {
+                    // If already initializing, that's fine and expected
+                    if (error.message && error.message.includes("already initializing")) {
+                        console.log("Recording already active/initializing (expected behavior)");
                     } else {
-                        console.error(`Error starting recording on ${currentUrl}:`, e);
+                        console.error("Error starting recording:", error);
                     }
-                }
-            } else {
-                // Try to pause recording for non-allowed URLs
-                try {
-                    const sessionId = await window.QSI.API.SessionRecording.pause();
-                    console.log(`Recording paused on non-allowed URL: ${currentUrl}. ${sessionId ? 'Session ID: ' + sessionId : ''}`);
-                } catch (e) {
-                    // If it's not initialized, that's expected on pages where recording should be paused
-                    if (e.message && e.message.includes("not initialized")) {
-                        console.log(`Recording already paused/not initialized on URL: ${currentUrl}`);
+                });
+        } else {
+            console.log(`URL change: ${currentUrl} is not allowed for recording, pausing recording`);
+            
+            window.QSI.API.SessionRecording.pause()
+                .then(sessionId => {
+                    console.log(`Recording paused on non-allowed URL. ${sessionId ? 'Session ID: ' + sessionId : ''}`);
+                })
+                .catch(error => {
+                    // If not initialized, that's expected in some cases
+                    if (error.message && error.message.includes("not initialized")) {
+                        console.log("Recording already paused/not initialized (expected behavior)");
                     } else {
-                        console.error(`Error pausing recording on ${currentUrl}:`, e);
+                        console.error("Error pausing recording:", error);
                     }
-                }
-            }
-            
-            // Reset initialization counter after successful update
-            initializationAttempts = 0;
-        } catch (error) {
-            console.warn("Failed to update recording state:", error);
-            
-            // Retry initial setup with backoff
-            if (initializationAttempts < MAX_INIT_ATTEMPTS) {
-                initializationAttempts++;
-                const delay = 1000 * Math.pow(1.5, initializationAttempts - 1); // Exponential backoff
-                console.log(`Retrying initialization (attempt ${initializationAttempts}/${MAX_INIT_ATTEMPTS}) in ${delay}ms`);
-                setTimeout(updateRecordingState, delay);
-            } else {
-                console.error("Max initialization attempts reached. Recording control may not work properly.");
-            }
-        } finally {
-            isOperationInProgress = false;
+                });
         }
     }
     
-    // Function to set up URL change monitoring
+    // Set up URL change monitoring
     function setupUrlChangeMonitoring() {
-        // Initial check with retry mechanism
-        updateRecordingState();
+        // Handle initial page load differently
+        handleInitialPageLoad();
         
         // Monitor URL changes
         let lastUrl = location.href;
@@ -624,14 +617,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const currentUrl = location.href;
             if (currentUrl !== lastUrl) {
                 lastUrl = currentUrl;
-                updateRecordingState();
+                console.log(`URL changed to: ${currentUrl}`);
+                handleUrlChange();
             }
         }, 1000);
         
         // For SPAs using History API
         window.addEventListener('popstate', () => {
             // Small delay to ensure URL is updated
-            setTimeout(updateRecordingState, 50);
+            setTimeout(() => {
+                console.log("History state changed");
+                handleUrlChange();
+            }, 50);
         });
     }
     
