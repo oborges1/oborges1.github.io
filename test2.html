@@ -3,59 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' 
-        https://*.qualtrics.com 
-        https://*.siteintercept.qualtrics.com;
-    connect-src 'self' 
-        https://*.qualtrics.com 
-        https://*.siteintercept.qualtrics.com
-        https://siteintercept.qualtrics.com
-        https://survey.sky.nz
-		https://yourexperience.hcf.com.au;
-    frame-src 'self' 
-        https://*.qualtrics.com 
-        https://*.siteintercept.qualtrics.com
-		https://survey.sky.nz
-        https://yourexperience.hcf.com.au;
-    img-src 'self' data: 
-        https://*.qualtrics.com
-		https://survey.sky.nz
-        https://yourexperience.hcf.com.au;
-    style-src 'self' 'unsafe-inline' 
-        https://*.qualtrics.com
-		https://survey.sky.nz
-        https://yourexperience.hcf.com.au;
-    font-src 'self'
-		https://survey.sky.nz
-        https://yourexperience.hcf.com.au;
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self'
-		https://survey.sky.nz
-        https://yourexperience.hcf.com.au;
-    worker-src 'self' blob: data:;
-    upgrade-insecure-requests
-    ">
-
-    <!--BEGIN QUALTRICS WEBSITE FEEDBACK SNIPPET-->
-
-    <script type='text/javascript'>
-
-    (function(){var g=function(g){
-
-    this.go=function(){var a=document.createElement("script");a.type="text/javascript";a.src=g;document.body&&document.body.appendChild(a)};
-
-    this.start=function(){var t=this;"complete"!==document.readyState?window.addEventListener?window.addEventListener("load",function(){t.go()},!1):window.attachEvent&&window.attachEvent("onload",function(){t.go()}):t.go()};};
-
-    try{(new g("https://zn3q0qxryslm3qoak-skyexperience.siteintercept.qualtrics.com/SIE/?Q_ZID=ZN_3Q0qXRySLM3qoAk")).start()}catch(i){}})();
-
-    </script><div id='ZN_3Q0qXRySLM3qoAk'><!--DO NOT REMOVE-CONTENTS PLACED HERE--></div>
-
-    <!--END WEBSITE FEEDBACK SNIPPET-->
-
-    <title>SPA Example with Qualtrics Integration</title>
+    <title>SPA Example with Real Qualtrics Integration</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -114,12 +62,26 @@
             padding: 10px;
             background-color: #f0f0f0;
             border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-line;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+        }
+        .success {
+            color: #52c41a;
+        }
+        .error {
+            color: #f5222d;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>SPA Example</h1>
+        <h1>SPA Example with Qualtrics</h1>
         
         <!-- Navigation -->
         <div class="nav">
@@ -137,12 +99,13 @@
             <div id="specialFeature" class="special-feature">
                 <h3>Special Feature</h3>
                 <p>This feature will become active after 10 seconds. When it does, we'll trigger the Qualtrics intercept.</p>
+                <p>We'll first call <code>QSI.API.load()</code> and then <code>QSI.API.run()</code> with your intercept ID.</p>
             </div>
         </div>
         
         <div id="about" class="content-section">
             <h2>About</h2>
-            <p>This is a simple demonstration of a Single Page Application (SPA) with Qualtrics integration.</p>
+            <p>This is a demonstration of a Single Page Application (SPA) with real Qualtrics integration.</p>
         </div>
         
         <div id="contact" class="content-section">
@@ -152,26 +115,23 @@
         
         <!-- Status display for debugging -->
         <div class="status" id="status">
-            Status: Waiting for feature activation (10 seconds)...
+            [Log] Waiting for feature activation (10 seconds)...
         </div>
     </div>
 
-    <!-- Mock Qualtrics API (for demonstration) -->
-    <script>
-        // Mock Qualtrics API for demonstration purposes
-        window.QSI = {
-            API: {
-                run: function(interceptID) {
-                    console.log(`Qualtrics intercept triggered: ${interceptID}`);
-                    document.getElementById('status').innerHTML += `<br>✓ Qualtrics intercept ${interceptID} triggered successfully!`;
-                    alert(`Qualtrics intercept triggered: ${interceptID}\n\nIn a real implementation, this would show your survey.`);
-                }
-            }
-        };
-    </script>
-    
     <!-- SPA functionality -->
     <script>
+        // Helper function to log status messages
+        function logStatus(message, type = '') {
+            const statusEl = document.getElementById('status');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.textContent = `[Log] ${message}`;
+            statusEl.appendChild(logEntry);
+            statusEl.scrollTop = statusEl.scrollHeight; // Auto-scroll to bottom
+            console.log(message);
+        }
+        
         // Basic SPA navigation
         document.querySelectorAll('.nav-item').forEach(item => {
             item.addEventListener('click', function() {
@@ -187,26 +147,27 @@
                     section.classList.remove('active');
                 });
                 document.getElementById(target).classList.add('active');
+                
+                logStatus(`Navigated to ${target} page`);
             });
         });
         
         // Function to activate the special feature after delay
         function activateSpecialFeature() {
             const specialFeature = document.getElementById('specialFeature');
-            const statusElement = document.getElementById('status');
             
             // Countdown timer
             let timeLeft = 10;
             const countdownInterval = setInterval(() => {
                 timeLeft--;
-                statusElement.textContent = `Status: Activating in ${timeLeft} seconds...`;
+                logStatus(`Activating in ${timeLeft} seconds...`);
                 
                 if (timeLeft <= 0) {
                     clearInterval(countdownInterval);
                     
                     // Activate the special feature
                     specialFeature.classList.add('active');
-                    statusElement.textContent = 'Status: Special feature activated!';
+                    logStatus('Special feature activated!', 'success');
                     
                     // Create and dispatch a custom event
                     const activationEvent = new CustomEvent('featureActivated', {
@@ -220,29 +181,65 @@
             }, 1000);
         }
         
+        // Function to trigger Qualtrics intercept with proper sequence
+        function triggerQualtricsIntercept(interceptID) {
+            if (!window.QSI || typeof window.QSI.API === 'undefined') {
+                logStatus('Error: Qualtrics API not available. Make sure the Qualtrics Site Intercept code is loaded.', 'error');
+                return Promise.reject(new Error('Qualtrics API not available'));
+            }
+            
+            logStatus('Starting Qualtrics intercept sequence...');
+            
+            // First call load()
+            return window.QSI.API.load()
+                .then(() => {
+                    logStatus('Qualtrics API loaded successfully', 'success');
+                    
+                    // Check if intercept is targetable
+                    const intercept = window.QSI.API.getIntercept(interceptID);
+                    if (!intercept || !intercept.isTargetable()) {
+                        logStatus(`Warning: Intercept ${interceptID} is not targetable`, 'error');
+                    }
+                    
+                    // Then call run() with the intercept ID
+                    logStatus(`Calling QSI.API.run('${interceptID}')`);
+                    return window.QSI.API.run(interceptID);
+                })
+                .then(() => {
+                    logStatus(`Intercept ${interceptID} run call completed`, 'success');
+                })
+                .catch(error => {
+                    logStatus(`Error triggering Qualtrics intercept: ${error.message}`, 'error');
+                    console.error('Qualtrics error:', error);
+                    throw error;
+                });
+        }
+        
         // Listen for the custom event and trigger Qualtrics intercept
         document.addEventListener('featureActivated', function(event) {
-            console.log('Feature activated event received:', event.detail);
-            document.getElementById('status').innerHTML += '<br>Feature activation detected!';
+            logStatus('Feature activation detected! Preparing to trigger intercept...');
             
-            // Trigger Qualtrics intercept
-            if (window.QSI && typeof window.QSI.API !== 'undefined') {
-                // Small delay to allow UI to update first
-                setTimeout(() => {
-                    window.QSI.API.run('SI_cIIH7BVTSUPlUSa'); // Replace with your actual intercept ID
-                }, 500);
-            } else {
-                console.error('Qualtrics API not available');
-                document.getElementById('status').innerHTML += '<br>❌ Error: Qualtrics API not available';
-            }
+            // Small delay to allow UI to update first
+            setTimeout(() => {
+                // The actual intercept ID to trigger - REPLACE WITH YOUR ACTUAL INTERCEPT ID
+                const interceptID = 'SI_cIIH7BVTSUPlUSa'; 
+                
+                triggerQualtricsIntercept(interceptID)
+                    .then(() => {
+                        logStatus('Qualtrics intercept process completed', 'success');
+                    })
+                    .catch(err => {
+                        logStatus(`Failed to complete intercept process: ${err.message}`, 'error');
+                    });
+            }, 500);
         });
         
         // Start the activation process when the page loads
         window.addEventListener('DOMContentLoaded', function() {
+            logStatus('Page loaded, starting feature activation countdown');
             activateSpecialFeature();
         });
     </script>
-    
-    <!-- In a real implementation, you'd include the Qualtrics Site Intercept code here -->
+
 </body>
 </html>
