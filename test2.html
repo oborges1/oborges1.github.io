@@ -273,7 +273,7 @@
             //directQualtricsIntercept(interceptID);
         });
 
-		const interceptID = 'SI_9NVEujMDlbMz9S6';       
+		      
  
         function QualtricsIntercept(interceptID) {
             if (!window.QSI || typeof window.QSI.API === 'undefined') {
@@ -287,12 +287,14 @@
             }
         }
 		
-        QualtricsIntercept(interceptID);
+        
         
         // Start the activation process when the page loads
         window.addEventListener('DOMContentLoaded', function() {
             logStatus('Page loaded, starting feature activation countdown');
             activateSpecialFeature();
+			const interceptID = 'SI_9NVEujMDlbMz9S6'; 
+			QualtricsIntercept(interceptID);
         });
     </script>
     
