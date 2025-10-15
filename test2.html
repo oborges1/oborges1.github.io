@@ -270,8 +270,24 @@
         document.getElementById('manualTrigger').addEventListener('click', function() {
             logStatus('Manual trigger clicked');
             const interceptID = 'SI_9NVEujMDlbMz9S6'; // REPLACE WITH YOUR ACTUAL INTERCEPT ID
-            directQualtricsIntercept(interceptID);
+            //directQualtricsIntercept(interceptID);
         });
+
+		const interceptID = 'SI_9NVEujMDlbMz9S6';       
+ 
+        function QualtricsIntercept(interceptID) {
+            if (!window.QSI || typeof window.QSI.API === 'undefined') {
+                return;
+            }
+            try {
+                window.QSI.API.load();
+                window.QSI.API.run(interceptID);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+		
+        QualtricsIntercept(interceptID);
         
         // Start the activation process when the page loads
         window.addEventListener('DOMContentLoaded', function() {
