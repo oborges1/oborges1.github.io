@@ -231,7 +231,7 @@
         }
         
         // Simplified function to trigger Qualtrics intercept directly
-        function directQualtricsIntercept(interceptID) {
+        function QualtricsIntercept(interceptID) {
             logStatus('Checking Qualtrics API availability...');
             
             if (!window.QSI || typeof window.QSI.API === 'undefined') {
@@ -272,20 +272,6 @@
             const interceptID = 'SI_9NVEujMDlbMz9S6'; // REPLACE WITH YOUR ACTUAL INTERCEPT ID
             //directQualtricsIntercept(interceptID);
         });
-
-		      
- 
-        function QualtricsIntercept(interceptID) {
-            if (!window.QSI || typeof window.QSI.API === 'undefined') {
-                return;
-            }
-            try {
-                window.QSI.API.load();
-                window.QSI.API.run(interceptID);
-            } catch (error) {
-                console.error('Error:', error);
-            }
-         }
 		
         
         
