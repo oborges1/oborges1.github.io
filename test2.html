@@ -262,7 +262,7 @@
             setTimeout(() => {
                 // The actual intercept ID to trigger - REPLACE WITH YOUR ACTUAL INTERCEPT ID
                 const interceptID = 'SI_cIIH7BVTSUPlUSa'; 
-                //directQualtricsIntercept(interceptID);
+                //QualtricsIntercept(interceptID);
             }, 1000);
         });
         
@@ -270,11 +270,9 @@
         document.getElementById('manualTrigger').addEventListener('click', function() {
             logStatus('Manual trigger clicked');
             const interceptID = 'SI_9NVEujMDlbMz9S6'; // REPLACE WITH YOUR ACTUAL INTERCEPT ID
-            //directQualtricsIntercept(interceptID);
+            QualtricsIntercept(interceptID);
         });
 		
-        	const interceptID = 'SI_9NVEujMDlbMz9S6'; 
-			QualtricsIntercept(interceptID);
         
         // Start the activation process when the page loads
         window.addEventListener('DOMContentLoaded', function() {
