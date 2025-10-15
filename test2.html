@@ -241,6 +241,9 @@
             
             try {
                 // Simple direct sequence - no promises or checks
+
+				logStatus('Calling QSI.API.umload()');
+                window.QSI.API.unload();
                 logStatus('Calling QSI.API.load()');
                 window.QSI.API.load();
                 
