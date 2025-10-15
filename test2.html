@@ -231,7 +231,7 @@
         }
         
         // Simplified function to trigger Qualtrics intercept directly
-        function QualtricsIntercept(interceptID) {
+        function QualtricsIntercept() {
             logStatus('Checking Qualtrics API availability...');
             
             if (!window.QSI || typeof window.QSI.API === 'undefined') {
@@ -242,13 +242,11 @@
             try {
                 // Simple direct sequence - no promises or checks
 
-				logStatus('Calling QSI.API.umload()');
-                window.QSI.API.unload();
                 logStatus('Calling QSI.API.load()');
                 window.QSI.API.load();
                 
-                logStatus(`Calling QSI.API.run('${interceptID}')`);
-                window.QSI.API.run(interceptID);
+                logStatus(`Calling QSI.API.run()`);
+                window.QSI.API.run();
                 
                 logStatus('Qualtrics API calls completed', 'success');
             } catch (error) {
@@ -264,16 +262,14 @@
             // Small delay to allow UI to update first
             setTimeout(() => {
                 // The actual intercept ID to trigger - REPLACE WITH YOUR ACTUAL INTERCEPT ID
-                const interceptID = 'SI_cIIH7BVTSUPlUSa'; 
-                //QualtricsIntercept(interceptID);
+                QualtricsIntercept(interceptID);
             }, 1000);
         });
         
         // Also add manual trigger button for testing
         document.getElementById('manualTrigger').addEventListener('click', function() {
             logStatus('Manual trigger clicked');
-            const interceptID = 'SI_9NVEujMDlbMz9S6'; // REPLACE WITH YOUR ACTUAL INTERCEPT ID
-            QualtricsIntercept(interceptID);
+            QualtricsIntercept();
         });
 		
         
